@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Traccia e organizza tutto ciò che impari ogni giorno con ricerca avanzata e organizzazione automatica">
+    <meta name="keywords" content="apprendimento, diario, note, organizzazione, studio">
+    <meta name="author" content="Learning Diary">
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Diario di Apprendimento">
+    <meta property="og:description" content="Traccia e organizza tutto ciò che impari ogni giorno">
+    <meta property="og:type" content="website">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+
+    <title>Diario di Apprendimento</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Skip Navigation Links for Accessibility -->
+    <a href="#main-content" class="skip-link">Vai al contenuto principale</a>
+    <a href="#search" class="skip-link">Vai alla ricerca</a>
+    <a href="#add-form" class="skip-link">Vai al form di aggiunta</a>
+
+    <!-- First-time User Hint -->
+    <div id="keyboardHint" class="keyboard-hint" role="status" aria-live="polite" hidden>
+        <span>💡 Premi <kbd>?</kbd> per vedere le scorciatoie da tastiera</span>
+        <button id="dismissHint" aria-label="Chiudi suggerimento" class="hint-close">×</button>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTop" class="scroll-to-top" aria-label="Torna in alto" hidden>
+        <span aria-hidden="true">↑</span>
+    </button>
+
+    <!-- Toast Container for Notifications -->
+    <div id="toastContainer" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="container">
+        <!-- Header Section -->
+        <header role="banner">
+            <div class="header-content">
+                <h1>
+                    <span aria-hidden="true">📚</span>
+                    <span>Diario di Apprendimento</span>
+                </h1>
+                <p class="subtitle">Traccia e organizza tutto ciò che impari ogni giorno</p>
+            </div>
+            <div class="header-actions">
+                <button id="themeToggle" class="btn-icon" aria-label="Cambia tema" title="Cambia tema (chiaro/scuro)">
+                    <span id="themeIcon">🌙</span>
+                </button>
+                <button id="keyboardShortcutsBtn" class="btn-icon" aria-label="Mostra scorciatoie da tastiera"
+                    title="Scorciatoie da tastiera (?)">
+                    <span aria-hidden="true">⌨️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Statistics Bar -->
+        <section class="stats-bar" role="region" aria-label="Statistiche apprendimenti">
+            <div class="stat-card">
+                <span class="stat-label">Totale</span>
+                <span class="stat-value" id="statTotal" aria-live="polite">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Oggi</span>
+                <span class="stat-value" id="statToday" aria-live="polite">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Questa settimana</span>
+                <span class="stat-value" id="statWeek" aria-live="polite">0</span>
+            </div>
+        </section>
+
+        <!-- Search Section (Always Visible) -->
+        <section class="search-section" role="search">
+            <label for="searchInput" class="visually-hidden">Cerca negli apprendimenti</label>
+            <input type="search" id="searchInput" class="search-box"
+                placeholder="🔍 Cerca negli apprendimenti... (Ctrl+K)" aria-label="Cerca negli apprendimenti"
+                aria-describedby="searchHelp">
+            <small id="searchHelp" class="form-text">
+                Cerca per argomento, contenuto o link
+            </small>
+        </section>
+
+        <!-- Add Entry Button (Collapsed by default) -->
+        <section class="add-section">
+            <button id="toggleFormBtn" class="btn btn-primary btn-large" aria-expanded="false" aria-controls="addForm">
+                <span aria-hidden="true">➕</span> Aggiungi Apprendimento
+            </button>
+        </section>
+
+        <!-- Add Entry Form (Hidden by default) -->
+        <section id="formSection" class="form-section" hidden>
+            <div class="form-header">
+                <h2 id="formTitle">Aggiungi nuovo apprendimento</h2>
+                <button id="closeFormBtn" class="btn-icon-small" aria-label="Chiudi form">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <form id="addForm" role="form" aria-labelledby="formTitle">
+                <!-- Hidden field for edit mode -->
+                <input type="hidden" id="editId" value="">
+
+                <!-- Required Fields -->
+                <div class="form-group">
+                    <label for="topic">
+                        Argomento <span class="required" aria-label="campo obbligatorio">*</span>
+                    </label>
+                    <input type="text" id="topic" required aria-required="true" aria-describedby="topicHelp"
+                        maxlength="200" placeholder="Es: JavaScript, Storia, Fotografia">
+                    <small id="topicHelp" class="form-text">
+                        Cosa hai imparato? (min 3, max 200 caratteri)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="content">
+                        Contenuto <span class="required" aria-label="campo obbligatorio">*</span>
+                    </label>
+                    <textarea id="content" rows="4" required aria-required="true"
+                        aria-describedby="contentHelp contentCounter" maxlength="10000"
+                        placeholder="Descrivi in dettaglio cosa hai imparato..."></textarea>
+                    <div class="form-footer">
+                        <small id="contentHelp" class="form-text">
+                            Descrivi in dettaglio (min 10, max 10000 caratteri)
+                        </small>
+                        <span id="contentCounter" class="char-counter" aria-live="polite">0 / 10000</span>
+                    </div>
+                </div>
+
+                <!-- Optional Fields (Collapsible) -->
+                <details class="optional-fields" open>
+                    <summary>
+                        <span>Campi opzionali</span>
+                        <span class="toggle-icon" aria-hidden="true">▼</span>
+                    </summary>
+
+                    <div class="form-group">
+                        <label for="link">Link di riferimento</label>
+                        <input type="url" id="link" aria-describedby="linkHelp"
+                            placeholder="https://esempio.com/articolo">
+                        <small id="linkHelp" class="form-text">
+                            Aggiungi un link per approfondire
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="imageUrl">URL immagine</label>
+                        <input type="url" id="imageUrl" aria-describedby="imageHelp"
+                            placeholder="https://esempio.com/immagine.jpg">
+                        <small id="imageHelp" class="form-text">
+                            URL di un'immagine correlata
+                        </small>
+                    </div>
+                </details>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span aria-hidden="true">➕</span> <span id="submitText">Aggiungi</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">
+                        <span aria-hidden="true">✕</span> Annulla
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Main Content: Entries List -->
+        <main id="main-content" role="main">
+            <h2 class="visually-hidden">Elenco apprendimenti</h2>
+            <div id="entriesContainer" class="entries-container" role="feed" aria-busy="false"
+                aria-label="Lista degli apprendimenti">
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-state" hidden>
+                    <div class="spinner" role="status">
+                        <span class="visually-hidden">Caricamento in corso...</span>
+                    </div>
+                    <p>Caricamento...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state" hidden>
+                    <span class="empty-icon" aria-hidden="true">📖</span>
+                    <h3>Nessun apprendimento ancora</h3>
+                    <p>Inizia ad aggiungere i tuoi apprendimenti usando il bottone "Aggiungi Apprendimento" sopra!</p>
+                    <p class="empty-hint">
+                        <kbd>Ctrl</kbd> + <kbd>N</kbd> per aprire velocemente il form
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer Actions -->
+        <footer class="footer-actions" role="contentinfo">
+            <button id="exportBtn" class="btn btn-secondary" aria-label="Esporta tutti i dati in formato JSON">
+                <span aria-hidden="true">⬇</span> Esporta
+            </button>
+            <button id="importBtn" class="btn btn-secondary" aria-label="Importa dati da file JSON">
+                <span aria-hidden="true">⬆</span> Importa
+            </button>
+            <button id="clearBtn" class="btn btn-danger" aria-label="Cancella tutti i dati">
+                <span aria-hidden="true">🗑</span> Cancella tutto
+            </button>
+            <input type="file" id="importFile" accept=".json" aria-label="Seleziona file JSON da importare" hidden>
+        </footer>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="keyboardModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content" role="document">
+            <div class="modal-header">
+                <h2 id="modalTitle">Scorciatoie da tastiera</h2>
+                <button id="closeModal" class="modal-close" aria-label="Chiudi finestra scorciatoie">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table class="shortcuts-table">
+                    <caption class="visually-hidden">Elenco scorciatoie da tastiera disponibili</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Tasto</th>
+                            <th scope="col">Azione</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><kbd>Ctrl</kbd> + <kbd>K</kbd></td>
+                            <td>Focus sulla ricerca</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Ctrl</kbd> + <kbd>N</kbd></td>
+                            <td>Apri/chiudi form nuovo apprendimento</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                            <td>Esporta dati</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>?</kbd></td>
+                            <td>Mostra/nascondi questa finestra</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Esc</kbd></td>
+                            <td>Chiudi finestre / Sfoca input</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="modal-note">
+                    <strong>Nota:</strong> Su Mac, usa <kbd>Cmd</kbd> invece di <kbd>Ctrl</kbd>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
