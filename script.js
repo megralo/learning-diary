@@ -1,5 +1,5 @@
 /* ====================================
-   Learning Diary v4.1.1 - Fix Modal Autoopen
+   Learning Diary v4.2.0 - Hamburger Menu
    ==================================== */
 
 const CONFIG = {
@@ -20,6 +20,7 @@ const CONFIG = {
         SEARCH: { key: 'k', ctrl: true },
         NEW_ENTRY: { key: 'n', ctrl: true },
         EXPORT: { key: 's', ctrl: true },
+        MENU: { key: 'm', alt: true },
         HELP: { key: '?' }
     }
 };
@@ -734,6 +735,7 @@ const KeyboardManager = {
     },
 
     handleKeydown(e) {
+        // Ctrl/Cmd + K: Focus search
         if (OS.checkModifier(e) && e.key.toLowerCase() === CONFIG.KEYBOARD_SHORTCUTS.SEARCH.key) {
             e.preventDefault();
             const searchInput = document.getElementById('searchInput');
@@ -741,26 +743,43 @@ const KeyboardManager = {
             return;
         }
 
+        // Ctrl/Cmd + N: Toggle form
         if (OS.checkModifier(e) && e.key.toLowerCase() === CONFIG.KEYBOARD_SHORTCUTS.NEW_ENTRY.key) {
             e.preventDefault();
             FormManager.toggle();
             return;
         }
 
+        // Ctrl/Cmd + S: Export data
         if (OS.checkModifier(e) && e.key.toLowerCase() === CONFIG.KEYBOARD_SHORTCUTS.EXPORT.key) {
             e.preventDefault();
             DataManager.export();
             return;
         }
 
+        // Cmd+M (Mac) or Alt+M (Windows/Linux): Toggle menu (NEW)
+        const isMenuShortcut = OS.isMac 
+            ? (e.metaKey && e.key.toLowerCase() === CONFIG.KEYBOARD_SHORTCUTS.MENU.key)
+            : (e.altKey && e.key.toLowerCase() === CONFIG.KEYBOARD_SHORTCUTS.MENU.key);
+        
+        if (isMenuShortcut) {
+            e.preventDefault();
+            MenuManager.toggle();
+            return;
+        }
+
+        // ?: Show help modal
         if (e.key === CONFIG.KEYBOARD_SHORTCUTS.HELP.key) {
             e.preventDefault();
             ModalManager.toggle();
             return;
         }
 
+        // Escape: Close modals/menu/form
         if (e.key === 'Escape') {
-            if (DayViewModal.isOpen()) {
+            if (MenuManager.isOpen()) {
+                MenuManager.close();
+            } else if (DayViewModal.isOpen()) {
                 DayViewModal.close();
             } else if (ModalManager.isOpen()) {
                 ModalManager.close();
@@ -778,12 +797,32 @@ const KeyboardManager = {
 
         const rows = modal.querySelectorAll('tbody tr');
         const modifierKey = OS.modifierKey();
+        const menuKey = OS.isMac ? 'Cmd' : 'Alt';
 
         rows.forEach(row => {
             const keyCell = row.querySelector('td:first-child');
-            if (keyCell && keyCell.textContent.includes('Ctrl')) {
-                const originalHtml = keyCell.innerHTML;
-                keyCell.innerHTML = originalHtml.replace(/Ctrl/g, modifierKey);
+            if (keyCell) {
+                let html = keyCell.innerHTML;
+                
+                // Replace Ctrl with Cmd/Ctrl based on OS
+                if (html.includes('Ctrl')) {
+                    html = html.replace(/Ctrl/g, modifierKey);
+                }
+                
+                // Replace Alt with Cmd/Alt based on OS for menu shortcut
+                if (html.includes('Alt')) {
+                    html = html.replace(/Alt/g, menuKey);
+                }
+                
+                keyCell.innerHTML = html;
+            }
+        });
+
+        // Update menu footer hints
+        const menuHints = document.querySelectorAll('.menu-hint');
+        menuHints.forEach(hint => {
+            if (hint.textContent.includes('Alt')) {
+                hint.innerHTML = hint.innerHTML.replace(/Alt/g, menuKey);
             }
         });
     }
@@ -906,7 +945,6 @@ const DayViewModal = {
         this.closeBtn = document.getElementById('closeDayView');
         this.backdrop = this.modal?.querySelector('.modal-backdrop');
 
-        // Assicurati che il modal sia hidden all'init
         if (this.modal) {
             this.modal.setAttribute('hidden', '');
             this.modal.style.display = 'none';
@@ -922,7 +960,6 @@ const DayViewModal = {
     },
 
     open(date, entries) {
-        // CRITICAL FIX: Blocca apertura se app non è inizializzata
         if (!appInitialized) {
             console.log('DayViewModal: Blocked open during app initialization');
             return;
@@ -1058,6 +1095,180 @@ const DayViewModal = {
 
         this.modalBody.innerHTML = '';
         this.modalBody.appendChild(fragment);
+    }
+};
+
+/* ====================================
+   MENU MANAGER (NEW - Hamburger Menu)
+   Pattern identical to ModalManager
+   ==================================== */
+
+const MenuManager = {
+    menu: null,
+    overlay: null,
+    closeBtn: null,
+    hamburgerBtn: null,
+    focusableElements: [],
+    firstFocusable: null,
+    lastFocusable: null,
+    previousFocus: null,
+    currentFocusIndex: 0,
+
+    init() {
+        this.menu = document.getElementById('hamburgerMenu');
+        this.overlay = this.menu?.querySelector('.menu-overlay');
+        this.closeBtn = document.getElementById('closeMenu');
+        this.hamburgerBtn = document.getElementById('hamburgerBtn');
+
+        if (!this.menu) {
+            console.error('MenuManager: hamburgerMenu element not found');
+            return;
+        }
+
+        // Ensure menu is hidden on init
+        this.menu.setAttribute('hidden', '');
+        this.menu.style.display = 'none';
+
+        // Event listeners
+        if (this.closeBtn) {
+            this.closeBtn.addEventListener('click', () => this.close());
+        }
+
+        if (this.overlay) {
+            this.overlay.addEventListener('click', () => this.close());
+        }
+
+        if (this.hamburgerBtn) {
+            this.hamburgerBtn.addEventListener('click', () => this.toggle());
+        }
+
+        // Keyboard navigation (Tab + Arrow keys)
+        if (this.menu) {
+            this.menu.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    this.handleFocusTrap(e);
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    this.handleArrowNavigation(e);
+                }
+            });
+        }
+
+        console.log('✅ MenuManager initialized');
+    },
+
+    open() {
+        if (!this.menu) return;
+
+        this.previousFocus = document.activeElement;
+
+        this.menu.removeAttribute('hidden');
+        this.menu.style.display = 'flex';
+        this.menu.setAttribute('aria-hidden', 'false');
+
+        // Update hamburger button state
+        if (this.hamburgerBtn) {
+            this.hamburgerBtn.setAttribute('aria-expanded', 'true');
+        }
+
+        this.updateFocusableElements();
+
+        // Focus first menu item
+        if (this.firstFocusable) {
+            this.firstFocusable.focus();
+            this.currentFocusIndex = 0;
+        }
+
+        document.body.style.overflow = 'hidden';
+
+        console.log('📂 Menu opened');
+    },
+
+    close() {
+        if (!this.menu) return;
+
+        this.menu.setAttribute('hidden', '');
+        this.menu.style.display = 'none';
+        this.menu.setAttribute('aria-hidden', 'true');
+
+        // Update hamburger button state
+        if (this.hamburgerBtn) {
+            this.hamburgerBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        document.body.style.overflow = '';
+
+        if (this.previousFocus) {
+            this.previousFocus.focus();
+        }
+
+        console.log('📁 Menu closed');
+    },
+
+    toggle() {
+        if (this.isOpen()) {
+            this.close();
+        } else {
+            this.open();
+        }
+    },
+
+    isOpen() {
+        return this.menu && !this.menu.hasAttribute('hidden');
+    },
+
+    updateFocusableElements() {
+        const focusableSelectors = [
+            '.menu-item',
+            'button:not([disabled])',
+            'a[href]'
+        ].join(', ');
+
+        this.focusableElements = Array.from(
+            this.menu.querySelectorAll(focusableSelectors)
+        ).filter(el => {
+            return el.closest('.menu-content');
+        });
+
+        this.firstFocusable = this.focusableElements[0];
+        this.lastFocusable = this.focusableElements[this.focusableElements.length - 1];
+    },
+
+    handleFocusTrap(e) {
+        if (e.shiftKey) {
+            // Shift + Tab: backward
+            if (document.activeElement === this.firstFocusable) {
+                e.preventDefault();
+                if (this.lastFocusable) {
+                    this.lastFocusable.focus();
+                    this.currentFocusIndex = this.focusableElements.length - 1;
+                }
+            }
+        } else {
+            // Tab: forward
+            if (document.activeElement === this.lastFocusable) {
+                e.preventDefault();
+                if (this.firstFocusable) {
+                    this.firstFocusable.focus();
+                    this.currentFocusIndex = 0;
+                }
+            }
+        }
+    },
+
+    handleArrowNavigation(e) {
+        e.preventDefault();
+
+        const menuItems = this.focusableElements.filter(el => el.classList.contains('menu-item'));
+
+        if (menuItems.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            this.currentFocusIndex = (this.currentFocusIndex + 1) % menuItems.length;
+        } else if (e.key === 'ArrowUp') {
+            this.currentFocusIndex = (this.currentFocusIndex - 1 + menuItems.length) % menuItems.length;
+        }
+
+        menuItems[this.currentFocusIndex].focus();
     }
 };
 
@@ -1420,7 +1631,7 @@ const FormHandler = {
 };
 
 /* ====================================
-   EVENT HANDLER - PRESERVED FROM v4.1
+   EVENT HANDLER - WITH MENU SUPPORT
    ==================================== */
 
 const EventHandler = {
@@ -1516,24 +1727,30 @@ const EventHandler = {
                         break;
 
                     case 'exportBtn':
+                    case 'menuExportBtn':
                         e.preventDefault();
                         e.stopPropagation();
                         DataManager.export();
+                        if (id === 'menuExportBtn') MenuManager.close();
                         handled = true;
                         break;
 
                     case 'importBtn':
+                    case 'menuImportBtn':
                         e.preventDefault();
                         e.stopPropagation();
                         const importFile = document.getElementById('importFile');
                         if (importFile) importFile.click();
+                        if (id === 'menuImportBtn') MenuManager.close();
                         handled = true;
                         break;
 
                     case 'clearBtn':
+                    case 'menuClearBtn':
                         e.preventDefault();
                         e.stopPropagation();
                         DataManager.clearAll();
+                        if (id === 'menuClearBtn') MenuManager.close();
                         handled = true;
                         break;
 
@@ -1578,6 +1795,14 @@ const EventHandler = {
                 } else if (ModalManager.isOpen()) {
                     ModalManager.close();
                 }
+                return;
+            }
+
+            // NEW: Handle menu overlay click
+            if (element.classList && element.classList.contains('menu-overlay')) {
+                e.preventDefault();
+                e.stopPropagation();
+                MenuManager.close();
                 return;
             }
 
@@ -1734,7 +1959,7 @@ const KeyboardHintManager = {
    ==================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Learning Diary v4.1.1 (Fix Modal Autoopen) initializing...');
+    console.log('🚀 Learning Diary v4.2.0 (Hamburger Menu) initializing...');
 
     RenderManager.showSkeleton();
 
@@ -1742,6 +1967,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ThemeManager.init();
     ModalManager.init();
     DayViewModal.init();
+    MenuManager.init(); // NEW
     KeyboardManager.init();
     KeyboardHintManager.init();
     ScrollToTopManager.init();
@@ -1784,13 +2010,13 @@ document.addEventListener('DOMContentLoaded', () => {
         RenderManager.render(entries);
         StatisticsCalculator.update(entries);
         
-        // CRITICAL: Enable DayViewModal after rendering is complete
         setTimeout(() => {
             appInitialized = true;
             console.log('✅ App initialization complete - DayViewModal enabled');
         }, 100);
     }, 300);
 
-    console.log('✅ Learning Diary v4.1.1 initialized');
+    console.log('✅ Learning Diary v4.2.0 initialized');
     console.log(`✅ OS detected: ${OS.isMac ? 'macOS' : 'Windows/Linux'}`);
+    console.log('✅ MenuManager ready - Alt+M to toggle');
 });

@@ -62,6 +62,15 @@
                     title="Scorciatoie da tastiera (?)">
                     <span aria-hidden="true">⌨️</span>
                 </button>
+                <!-- NEW: Hamburger Menu Button -->
+                <button id="hamburgerBtn" class="btn-icon hamburger-btn" aria-label="Apri menu" 
+                    aria-expanded="false" aria-controls="hamburgerMenu" title="Menu azioni (Alt+M)">
+                    <span class="hamburger-icon" aria-hidden="true">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </span>
+                </button>
             </div>
         </header>
 
@@ -210,18 +219,15 @@
             </div>
         </main>
 
-        <!-- Footer Actions -->
+        <!-- Footer Actions (Simplified - buttons moved to hamburger menu) -->
         <footer class="footer-actions" role="contentinfo">
-            <button id="exportBtn" class="btn btn-secondary" aria-label="Esporta tutti i dati in formato JSON">
-                <span aria-hidden="true">⬇</span> Esporta
-            </button>
-            <button id="importBtn" class="btn btn-secondary" aria-label="Importa dati da file JSON">
-                <span aria-hidden="true">⬆</span> Importa
-            </button>
-            <button id="clearBtn" class="btn btn-danger" aria-label="Cancella tutti i dati">
-                <span aria-hidden="true">🗑</span> Cancella tutto
-            </button>
+            <!-- Hidden file input for import functionality -->
             <input type="file" id="importFile" accept=".json" aria-label="Seleziona file JSON da importare" hidden>
+            
+            <!-- Optional: Add credits or info here -->
+            <p class="footer-info">
+                Learning Diary v4.2 - Organizza il tuo apprendimento
+            </p>
         </footer>
     </div>
 
@@ -258,6 +264,10 @@
                             <td>Esporta dati</td>
                         </tr>
                         <tr>
+                            <td><kbd>Alt</kbd> + <kbd>M</kbd></td>
+                            <td>Apri/chiudi menu azioni</td>
+                        </tr>
+                        <tr>
                             <td><kbd>?</kbd></td>
                             <td>Mostra/nascondi questa finestra</td>
                         </tr>
@@ -274,7 +284,7 @@
         </div>
     </div>
 
-    <!-- Day View Modal (NEW) -->
+    <!-- Day View Modal -->
     <div id="dayViewModal" class="modal day-view-modal" role="dialog" aria-modal="true" aria-labelledby="dayViewTitle"
         hidden>
         <div class="modal-backdrop" aria-hidden="true"></div>
@@ -289,6 +299,60 @@
                 <!-- Contenuto dinamico generato da JavaScript -->
             </div>
         </div>
+    </div>
+
+    <!-- NEW: Hamburger Menu (Slide-in from right) -->
+    <div id="hamburgerMenu" class="hamburger-menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle" hidden>
+        <!-- Menu Overlay (backdrop with blur) -->
+        <div class="menu-overlay" aria-hidden="true"></div>
+        
+        <!-- Menu Content (slides in from right) -->
+        <nav class="menu-content" role="menu" aria-labelledby="menuTitle">
+            <!-- Menu Header -->
+            <div class="menu-header">
+                <h2 id="menuTitle">Menu Azioni</h2>
+                <button id="closeMenu" class="menu-close" aria-label="Chiudi menu">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            
+            <!-- Menu Body with action items -->
+            <div class="menu-body">
+                <button id="menuExportBtn" class="menu-item" role="menuitem" tabindex="0">
+                    <span class="menu-item-icon" aria-hidden="true">⬇</span>
+                    <div class="menu-item-content">
+                        <span class="menu-item-title">Esporta Dati</span>
+                        <span class="menu-item-description">Scarica tutti i tuoi apprendimenti in formato JSON</span>
+                    </div>
+                </button>
+                
+                <button id="menuImportBtn" class="menu-item" role="menuitem" tabindex="-1">
+                    <span class="menu-item-icon" aria-hidden="true">⬆</span>
+                    <div class="menu-item-content">
+                        <span class="menu-item-title">Importa Dati</span>
+                        <span class="menu-item-description">Carica apprendimenti da un file JSON di backup</span>
+                    </div>
+                </button>
+                
+                <button id="menuClearBtn" class="menu-item menu-item-danger" role="menuitem" tabindex="-1">
+                    <span class="menu-item-icon" aria-hidden="true">🗑</span>
+                    <div class="menu-item-content">
+                        <span class="menu-item-title">Cancella Tutto</span>
+                        <span class="menu-item-description">Elimina permanentemente tutti i dati (irreversibile)</span>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- Menu Footer (optional info) -->
+            <div class="menu-footer">
+                <p class="menu-hint">
+                    <kbd>Alt</kbd> + <kbd>M</kbd> per aprire/chiudere questo menu
+                </p>
+                <p class="menu-hint">
+                    <kbd>↑</kbd> <kbd>↓</kbd> per navigare tra le opzioni
+                </p>
+            </div>
+        </nav>
     </div>
 
     <script src="script.js"></script>
