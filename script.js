@@ -1,5 +1,5 @@
 /* ====================================
-   CONFIGURATION
+   Learning Diary v4.1.1 - Fix Modal Autoopen
    ==================================== */
 
 const CONFIG = {
@@ -25,6 +25,12 @@ const CONFIG = {
 };
 
 /* ====================================
+   APP INITIALIZATION FLAG
+   ==================================== */
+
+let appInitialized = false;
+
+/* ====================================
    UTILITY: DETECT OPERATING SYSTEM
    ==================================== */
 
@@ -38,6 +44,40 @@ const OS = {
 
     checkModifier(event) {
         return this.isMac ? event.metaKey : event.ctrlKey;
+    }
+};
+
+/* ====================================
+   RIPPLE EFFECT UTILITY
+   ==================================== */
+
+const RippleEffect = {
+    create(event, element) {
+        const ripple = document.createElement('span');
+        const rect = element.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = event.clientX - rect.left - size / 2;
+        const y = event.clientY - rect.top - size / 2;
+
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.classList.add('ripple');
+
+        element.appendChild(ripple);
+
+        setTimeout(() => {
+            ripple.remove();
+        }, 600);
+    },
+
+    initAll() {
+        document.addEventListener('click', (e) => {
+            const button = e.target.closest('.btn');
+            if (button && !button.disabled) {
+                this.create(e, button);
+            }
+        });
     }
 };
 
@@ -354,7 +394,7 @@ const StatisticsCalculator = {
         const current = parseInt(element.textContent) || 0;
         if (current === target) return;
 
-        const duration = 300;
+        const duration = 400;
         const startTime = performance.now();
         const difference = target - current;
 
@@ -720,7 +760,9 @@ const KeyboardManager = {
         }
 
         if (e.key === 'Escape') {
-            if (ModalManager.isOpen()) {
+            if (DayViewModal.isOpen()) {
+                DayViewModal.close();
+            } else if (ModalManager.isOpen()) {
                 ModalManager.close();
             } else if (FormManager.formSection && !FormManager.formSection.hasAttribute('hidden')) {
                 FormManager.close();
@@ -748,7 +790,7 @@ const KeyboardManager = {
 };
 
 /* ====================================
-   MODAL MANAGER WITH FOCUS TRAP
+   MODAL MANAGER WITH FOCUS TRAP (KEYBOARD SHORTCUTS)
    ==================================== */
 
 const ModalManager = {
@@ -847,6 +889,179 @@ const ModalManager = {
 };
 
 /* ====================================
+   DAY VIEW MODAL - FIX AUTOOPEN BUG
+   ==================================== */
+
+const DayViewModal = {
+    modal: null,
+    modalBody: null,
+    closeBtn: null,
+    backdrop: null,
+    previousFocus: null,
+    currentDate: null,
+
+    init() {
+        this.modal = document.getElementById('dayViewModal');
+        this.modalBody = document.getElementById('dayViewBody');
+        this.closeBtn = document.getElementById('closeDayView');
+        this.backdrop = this.modal?.querySelector('.modal-backdrop');
+
+        // Assicurati che il modal sia hidden all'init
+        if (this.modal) {
+            this.modal.setAttribute('hidden', '');
+            this.modal.style.display = 'none';
+        }
+
+        if (this.closeBtn) {
+            this.closeBtn.addEventListener('click', () => this.close());
+        }
+
+        if (this.backdrop) {
+            this.backdrop.addEventListener('click', () => this.close());
+        }
+    },
+
+    open(date, entries) {
+        // CRITICAL FIX: Blocca apertura se app non è inizializzata
+        if (!appInitialized) {
+            console.log('DayViewModal: Blocked open during app initialization');
+            return;
+        }
+
+        if (!this.modal || !this.modalBody) return;
+
+        this.currentDate = date;
+        this.previousFocus = document.activeElement;
+
+        this.modal.removeAttribute('hidden');
+        this.modal.style.display = 'flex';
+        this.modal.setAttribute('aria-hidden', 'false');
+
+        document.body.style.overflow = 'hidden';
+
+        this.renderDayView(date, entries);
+
+        if (this.closeBtn) {
+            this.closeBtn.focus();
+        }
+    },
+
+    close() {
+        if (!this.modal) return;
+
+        this.modal.setAttribute('hidden', '');
+        this.modal.style.display = 'none';
+        this.modal.setAttribute('aria-hidden', 'true');
+
+        document.body.style.overflow = '';
+
+        this.modalBody.innerHTML = '';
+        this.currentDate = null;
+
+        if (this.previousFocus) {
+            this.previousFocus.focus();
+        }
+    },
+
+    isOpen() {
+        return this.modal && !this.modal.hasAttribute('hidden');
+    },
+
+    renderDayView(date, entries) {
+        const title = document.getElementById('dayViewTitle');
+        if (title) {
+            title.textContent = RenderManager.formatDate(entries[0].timestamp);
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        const stats = document.createElement('div');
+        stats.className = 'day-view-stats';
+        stats.innerHTML = `
+            <p style="text-align: center; color: var(--color-text-light); margin-bottom: var(--spacing-lg);">
+                <strong>${entries.length}</strong> apprendiment${entries.length === 1 ? 'o' : 'i'} in questo giorno
+            </p>
+        `;
+        fragment.appendChild(stats);
+
+        entries.forEach((entry, index) => {
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'entry';
+            entryDiv.style.borderBottom = index < entries.length - 1 ? '1px solid var(--color-border-light)' : 'none';
+            entryDiv.style.paddingBottom = 'var(--spacing-lg)';
+            entryDiv.style.marginBottom = 'var(--spacing-lg)';
+
+            const header = document.createElement('div');
+            header.className = 'entry-header';
+
+            const title = document.createElement('h3');
+            title.className = 'entry-title';
+            title.textContent = entry.topic;
+
+            const time = document.createElement('time');
+            time.className = 'entry-time';
+            time.setAttribute('datetime', new Date(entry.timestamp).toISOString());
+            time.textContent = RenderManager.formatTime(entry.timestamp);
+
+            header.appendChild(title);
+            header.appendChild(time);
+            entryDiv.appendChild(header);
+
+            const content = document.createElement('div');
+            content.className = 'entry-content';
+            content.textContent = entry.content;
+            entryDiv.appendChild(content);
+
+            if (entry.link) {
+                const link = document.createElement('a');
+                link.href = entry.link;
+                link.className = 'entry-link';
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.innerHTML = `
+                    <span aria-hidden="true">🔗</span>
+                    <span>${RenderManager.escapeHtml(entry.link)}</span>
+                `;
+                entryDiv.appendChild(link);
+            }
+
+            if (entry.imageUrl) {
+                const img = document.createElement('img');
+                img.src = entry.imageUrl;
+                img.alt = `Immagine per ${entry.topic}`;
+                img.className = 'entry-image';
+                img.loading = 'lazy';
+                entryDiv.appendChild(img);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'entry-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-secondary';
+            editBtn.setAttribute('data-action', 'edit');
+            editBtn.setAttribute('data-id', entry.id);
+            editBtn.innerHTML = '<span aria-hidden="true">✏️</span> Modifica';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-danger';
+            deleteBtn.setAttribute('data-action', 'delete');
+            deleteBtn.setAttribute('data-id', entry.id);
+            deleteBtn.innerHTML = '<span aria-hidden="true">🗑</span> Elimina';
+
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+            entryDiv.appendChild(actions);
+
+            fragment.appendChild(entryDiv);
+        });
+
+        this.modalBody.innerHTML = '';
+        this.modalBody.appendChild(fragment);
+    }
+};
+
+/* ====================================
    RENDERING MANAGER
    ==================================== */
 
@@ -902,10 +1117,25 @@ const RenderManager = {
         });
     },
 
+    showSkeleton() {
+        const loadingState = document.getElementById('loadingState');
+        if (loadingState) {
+            loadingState.removeAttribute('hidden');
+        }
+    },
+
+    hideSkeleton() {
+        const loadingState = document.getElementById('loadingState');
+        if (loadingState) {
+            loadingState.setAttribute('hidden', '');
+        }
+    },
+
     render(entries, query = '') {
         const container = document.getElementById('entriesContainer');
         const emptyState = document.getElementById('emptyState');
-        const loadingState = document.getElementById('loadingState');
+
+        this.hideSkeleton();
 
         if (entries.length === 0) {
             if (emptyState) emptyState.removeAttribute('hidden');
@@ -914,7 +1144,6 @@ const RenderManager = {
         }
 
         if (emptyState) emptyState.setAttribute('hidden', '');
-        if (loadingState) loadingState.setAttribute('hidden', '');
 
         const groupedByDate = this.groupByDate(entries);
         const fragment = document.createDocumentFragment();
@@ -927,6 +1156,8 @@ const RenderManager = {
             const dateHeader = document.createElement('div');
             dateHeader.className = 'date-header';
             dateHeader.textContent = this.formatDate(dateEntries[0].timestamp);
+            dateHeader.setAttribute('data-date', date);
+            dateHeader.setAttribute('title', 'Clicca per visualizzare la giornata');
             card.appendChild(dateHeader);
 
             dateEntries.forEach(entry => {
@@ -1189,7 +1420,7 @@ const FormHandler = {
 };
 
 /* ====================================
-   EVENT HANDLER - FINAL FIX
+   EVENT HANDLER - PRESERVED FROM v4.1
    ==================================== */
 
 const EventHandler = {
@@ -1219,6 +1450,17 @@ const EventHandler = {
         while (element && attempts < maxAttempts) {
             const id = element.id;
             const action = element.getAttribute('data-action');
+
+            // Handle date-header click
+            if (element.classList && element.classList.contains('date-header')) {
+                const date = element.getAttribute('data-date');
+                if (date) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleDateClick(date);
+                    return;
+                }
+            }
 
             if (action === 'delete') {
                 const entryId = element.getAttribute('data-id');
@@ -1315,6 +1557,13 @@ const EventHandler = {
                         ScrollToTopManager.scrollToTop();
                         handled = true;
                         break;
+
+                    case 'clearSearch':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.clearSearch();
+                        handled = true;
+                        break;
                 }
 
                 if (handled) return;
@@ -1323,7 +1572,12 @@ const EventHandler = {
             if (element.classList && element.classList.contains('modal-backdrop')) {
                 e.preventDefault();
                 e.stopPropagation();
-                ModalManager.close();
+                
+                if (DayViewModal.isOpen()) {
+                    DayViewModal.close();
+                } else if (ModalManager.isOpen()) {
+                    ModalManager.close();
+                }
                 return;
             }
 
@@ -1332,11 +1586,26 @@ const EventHandler = {
         }
     },
 
+    handleDateClick(dateString) {
+        const entries = AppState.getEntries();
+        const dateEntries = entries.filter(entry => {
+            return new Date(entry.timestamp).toDateString() === dateString;
+        });
+
+        if (dateEntries.length > 0) {
+            DayViewModal.open(dateString, dateEntries);
+        }
+    },
+
     handleEdit(id) {
         const entry = AppState.getEntryById(id);
         if (!entry) {
             ToastManager.show('Apprendimento non trovato', 'error');
             return;
+        }
+
+        if (DayViewModal.isOpen()) {
+            DayViewModal.close();
         }
 
         FormManager.openForEdit(entry);
@@ -1350,6 +1619,12 @@ const EventHandler = {
             if (entryElement) {
                 const card = entryElement.closest('.entry-card');
                 if (card) card.classList.add('deleting');
+            }
+
+            if (DayViewModal.isOpen()) {
+                setTimeout(() => {
+                    DayViewModal.close();
+                }, 300);
             }
 
             ToastManager.show('Apprendimento eliminato', 'undo', {
@@ -1376,6 +1651,22 @@ const EventHandler = {
         }, 200);
 
         localStorage.setItem(CONFIG.HINT_DISMISSED_KEY, 'true');
+    },
+
+    clearSearch() {
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearSearch');
+        
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+        }
+        
+        if (clearBtn) {
+            clearBtn.setAttribute('hidden', '');
+        }
+        
+        SearchHandler.performSearch('');
     }
 };
 
@@ -1393,10 +1684,20 @@ const SearchHandler = {
         }, CONFIG.DEBOUNCE_DELAY);
 
         const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearSearch');
+        
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.currentQuery = e.target.value;
                 this.debouncedSearch(this.currentQuery);
+                
+                if (clearBtn) {
+                    if (this.currentQuery.length > 0) {
+                        clearBtn.removeAttribute('hidden');
+                    } else {
+                        clearBtn.setAttribute('hidden', '');
+                    }
+                }
             });
         }
     },
@@ -1433,15 +1734,19 @@ const KeyboardHintManager = {
    ==================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Learning Diary v3.4 (FINAL FIX) initializing...');
+    console.log('🚀 Learning Diary v4.1.1 (Fix Modal Autoopen) initializing...');
+
+    RenderManager.showSkeleton();
 
     ToastManager.init();
     ThemeManager.init();
     ModalManager.init();
+    DayViewModal.init();
     KeyboardManager.init();
     KeyboardHintManager.init();
     ScrollToTopManager.init();
     FormManager.init();
+    RippleEffect.initAll();
 
     AppState.load();
 
@@ -1474,11 +1779,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const entries = AppState.getEntries();
-    RenderManager.render(entries);
-    StatisticsCalculator.update(entries);
+    setTimeout(() => {
+        const entries = AppState.getEntries();
+        RenderManager.render(entries);
+        StatisticsCalculator.update(entries);
+        
+        // CRITICAL: Enable DayViewModal after rendering is complete
+        setTimeout(() => {
+            appInitialized = true;
+            console.log('✅ App initialization complete - DayViewModal enabled');
+        }, 100);
+    }, 300);
 
-    console.log('✅ Learning Diary v3.4 initialized');
+    console.log('✅ Learning Diary v4.1.1 initialized');
     console.log(`✅ OS detected: ${OS.isMac ? 'macOS' : 'Windows/Linux'}`);
-    console.log(`✅ Modifier key: ${OS.modifierKey()}`);
 });
