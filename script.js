@@ -1572,7 +1572,7 @@ const EventHandler = {
             if (element.classList && element.classList.contains('modal-backdrop')) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 if (DayViewModal.isOpen()) {
                     DayViewModal.close();
                 } else if (ModalManager.isOpen()) {
@@ -1656,16 +1656,16 @@ const EventHandler = {
     clearSearch() {
         const searchInput = document.getElementById('searchInput');
         const clearBtn = document.getElementById('clearSearch');
-        
+
         if (searchInput) {
             searchInput.value = '';
             searchInput.focus();
         }
-        
+
         if (clearBtn) {
             clearBtn.setAttribute('hidden', '');
         }
-        
+
         SearchHandler.performSearch('');
     }
 };
@@ -1685,12 +1685,12 @@ const SearchHandler = {
 
         const searchInput = document.getElementById('searchInput');
         const clearBtn = document.getElementById('clearSearch');
-        
+
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.currentQuery = e.target.value;
                 this.debouncedSearch(this.currentQuery);
-                
+
                 if (clearBtn) {
                     if (this.currentQuery.length > 0) {
                         clearBtn.removeAttribute('hidden');
@@ -1783,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const entries = AppState.getEntries();
         RenderManager.render(entries);
         StatisticsCalculator.update(entries);
-        
+
         // CRITICAL: Enable DayViewModal after rendering is complete
         setTimeout(() => {
             appInitialized = true;
